@@ -6,13 +6,16 @@
 #include <cstdlib>
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h> 
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <time.h> 
 using namespace std;
-
+map<int, bool> uniqueNums;
 FileSystem::FileSystem(DiskManager *dm, char fileSystemName){
 	myPM = new PartitionManager(dm, fileSystemName, dm->getPartitionSize(fileSystemName));	
+
 }
 int FileSystem::createFile(char *filename, int fnameLen){	
 	int offset = 5;
@@ -76,6 +79,10 @@ int FileSystem::createFile(char *filename, int fnameLen){
 			offset+=5;
 		}
 		myPM->writeDiskBlock(1, dataBuffer);
+		
+		globalMap[fName].inode = inodeLoc;
+		globalMap[fName].fileLoc = fileLoc;
+		globalMap[fName].size = 0;
 		return 0;
 	}
 	else {
@@ -104,8 +111,22 @@ int FileSystem::deleteDirectory(char *dirname, int dnameLen){
 
 }
 int FileSystem::openFile(char *filename, int fnameLen, char mode, int lockId){
-	
-
+	char fname = filename[fnameLen-1];
+	if (!searchForFile(fname) || filename[0] != '/'){
+		return -1;
+	}
+	else if(mode != 'r' && mode != 'w' && mode != 'm')
+	{
+		return -2;
+	}
+	else{
+	int process = getUniqueID();
+	personMap[process].name = fname;
+	personMap[process].mode = mode;
+	personMap[process].loc = globalMap[fname].fileLoc;
+	cout << "Entry Created " << personMap[process].name << " " << personMap[process].mode << " " << personMap[process].loc << endl;
+	return process;
+	}
 	return -4;
 
 }
@@ -134,12 +155,27 @@ int FileSystem::getAttribute(char *filename, int fnameLen /* ... and other param
 int setAttribute(char *filename, int fnameLen /* ... and other parameters as needed */){
 
 }
+int FileSystem::getUniqueID(){
+	int ID;
+  	srand (time(0));
+
+  	ID = rand() % 100 + 1;
+		
+	while (uniqueNums[ID] == true){
+  		ID = rand() % 100 + 1;
+				
+	}
+	uniqueNums[ID] = true;
+	cout<< "Generated ID: " << ID << endl;
+	return ID;
+	
+}
 bool FileSystem::searchForFile(char fileName){
 	char buffer[64];
 	myPM->readDiskBlock(1, buffer);
 	int offset = 5;
 	for(int i = 0; i < 11; i++){
-		cout<< buffer[offset] << endl;
+		//cout<< buffer[offset] << endl;
 		if(buffer[offset] == fileName){
 			return true;
 		}

@@ -1,11 +1,26 @@
 #include <string>
+#include <map>
 class FileSystem {
   DiskManager *myDM;
   PartitionManager *myPM;
   char myfileSystemName;
   int myfileSystemSize;
   /* declare other private members here */
+  struct gft{
+	int inode;
+	int fileLoc;
+	int size;
+	char *attr;
 
+  };
+  struct pp {
+	char name;
+	int loc;
+	char mode;
+  };
+  map<char, gft> globalMap;
+  map<int, pp> personMap;
+  int getUniqueID();
   public:
     FileSystem(DiskManager *dm, char fileSystemName);
     int createFile(char *filename, int fnameLen);
