@@ -13,10 +13,12 @@
 #include <time.h> 
 using namespace std;
 map<int, bool> uniqueNums;
+
 FileSystem::FileSystem(DiskManager *dm, char fileSystemName){
 	myPM = new PartitionManager(dm, fileSystemName, dm->getPartitionSize(fileSystemName));	
 
 }
+
 int FileSystem::createFile(char *filename, int fnameLen){	
 	int offset = 5;
 	char buffer[64];
@@ -36,8 +38,6 @@ int FileSystem::createFile(char *filename, int fnameLen){
 				cout << "File has already been created" << endl;
 				return -1;
 			}
-			//offset+=5;
-
 		}
 		offset = 0;
 		int inodeLoc = myPM->getFreeDiskBlock();
@@ -64,6 +64,11 @@ int FileSystem::createFile(char *filename, int fnameLen){
 		sprintf(buffer+offset, "%i", 1);
 		offset+=1;
 		sprintf(buffer+offset, "%i", 1);
+		offset+=2;
+		
+		//size bit
+		sprintf(buffer+offset, "%i", 0);
+
 
 		myPM->writeDiskBlock(inodeLoc, buffer);	
 		myPM->readDiskBlock(1, dataBuffer);
@@ -97,7 +102,6 @@ int FileSystem::createDirectory(char *dirname, int dnameLen){
 
 }
 int FileSystem::lockFile(char *filename, int fnameLen){
-	int fileLoc = 0;
 
 }
 int FileSystem::unlockFile(char *filename, int fnameLen, int lockId){
@@ -174,9 +178,13 @@ bool FileSystem::searchForFile(char fileName){
 	char buffer[64];
 	myPM->readDiskBlock(1, buffer);
 	int offset = 5;
+
 	for(int i = 0; i < 11; i++){
-		//cout<< buffer[offset] << endl;
 		if(buffer[offset] == fileName){
+			globalMap[fileName].inode = buffer[offset+1] - '0';
+			myPM->readDiskBlock(globalMap[fileName].inode, buffer);
+			globalMap[fileName].fileLoc = buffer[6] - '0';
+			globalMap[fileName].size = buffer[25] - '0';
 			return true;
 		}
 		offset+=5;

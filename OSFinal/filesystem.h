@@ -5,25 +5,28 @@ class FileSystem {
   PartitionManager *myPM;
   char myfileSystemName;
   int myfileSystemSize;
+  
   /* declare other private members here */
   struct gft{
-	int inode;
-	int fileLoc;
-	int size;
-	char *attr;
+    int inode;
+    int fileLoc;
+    int size;
+    char *attr;
 
   };
   struct pp {
-	char name;
-	int loc;
-	char mode;
+  	char name;
+  	int loc;
+  	char mode;
   };
+  
   map<char, gft> globalMap;
   map<int, pp> personMap;
-  int getUniqueID();
+
   public:
     FileSystem(DiskManager *dm, char fileSystemName);
     int createFile(char *filename, int fnameLen);
+    int getUniqueID();
     int createDirectory(char *dirname, int dnameLen);
     int lockFile(char *filename, int fnameLen);
     int unlockFile(char *filename, int fnameLen, int lockId);
