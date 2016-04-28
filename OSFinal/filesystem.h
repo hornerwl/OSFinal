@@ -17,6 +17,7 @@ class FileSystem {
   struct pp {
   	char name;
   	int loc;
+    int rwptr;
   	char mode;
   };
   

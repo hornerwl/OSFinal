@@ -115,6 +115,7 @@ int FileSystem::deleteDirectory(char *dirname, int dnameLen){
 
 }
 int FileSystem::openFile(char *filename, int fnameLen, char mode, int lockId){
+	//this is a comment
 	char fname = filename[fnameLen-1];
 	if (!searchForFile(fname) || filename[0] != '/'){
 		return -1;
@@ -138,11 +139,28 @@ int FileSystem::closeFile(int fileDesc){
 
 }
 int FileSystem::readFile(int fileDesc, char *data, int len){
-  return 0;
+	return 0;
 }
 int FileSystem::writeFile(int fileDesc, char *data, int len){
+	char buffer[64];
+	fill_n(buffer, 64,'.');
+	//cout << len << endl;
+	if(personMap[fileDesc].loc == 0){
+		return -1;
+	}
+	if (len < 0) {
+		return -2;
+	}
+	if(personMap[fileDesc].mode == 'w' && personMap[fileDesc].mode == 'm') {
+		return -3;
+	}
 
-  return 0;
+	for(int i = 0; i < len; i++) {
+		buffer[i] = data[i];
+	}
+	//cout << personMap[fileDesc].loc << endl;
+	myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
+	return len;
 }
 int FileSystem::appendFile(int fileDesc, char *data, int len){
 

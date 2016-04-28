@@ -26,8 +26,8 @@ int main()
 
   DiskManager *dm = new DiskManager(d, 3, dp);
   FileSystem *fs1 = new FileSystem(dm, 'A');
-  //FileSystem *fs2 = new FileSystem(dm, 'B');
-  //FileSystem *fs3 = new FileSystem(dm, 'C');
+  FileSystem *fs2 = new FileSystem(dm, 'B');
+  FileSystem *fs3 = new FileSystem(dm, 'C');
   Client *c1 = new Client(fs1);
   int r, l1, l2, f1, f2, f3, f4, f5,i;
   char buf1[37], buf2[64], buf3[100], buf4[600];
@@ -133,19 +133,19 @@ int main()
   cout << "rv from writeFile /a f1 is " << r <<(r==5 ? " Correct wrote 5 b": " failure") <<endl;
   r = c1->myFS->writeFile(f1, buf3, 5);
   cout << "rv from writeFile /a f1 is " << r <<(r==5 ? " Correct wrote 5 K": " failure") <<endl;
-  r = c1->myFS->writeFile(f1, buf4, 5);
-  cout << "rv from writeFile /a f1 is " << r <<(r==5 ? " Correct wrote 5 M": " failure") <<endl;
+  //r = c1->myFS->writeFile(f1, buf4, 5);
+  //cout << "rv from writeFile /a f1 is " << r <<(r==5 ? " Correct wrote 5 M": " failure") <<endl;
   r = c1->myFS->appendFile(f1, buf1, 5);
   cout << "rv from appendFile /a f1 is " << r <<(r==5 ? " Correct wrote 5 s": " failure") <<endl;
 
-  r = c1->myFS->writeFile(f2, buf4, 600);
-  cout << "rv from writeFile /b f2 is " << r <<(r==600 ? " Correct wrote 600 M": " failure") <<endl;
+  //r = c1->myFS->writeFile(f2, buf4, 600);
+  //cout << "rv from writeFile /b f2 is " << r <<(r==600 ? " Correct wrote 600 M": " failure") <<endl;
   
   f3 = c1->myFS->openFile(const_cast<char *>("/a"), 2, 'r', -1);
   cout << "rv from openFile /a is " << f3 << (f3>0 ? " Correct file opened (r) f3 ": " failure") <<endl;
 
-  r = c1->myFS->writeFile(f3, buf4, 600);
-  cout << "rv from writeFile /a f3 is " << r <<(r==-3 ? " Correct open is r": " failure") <<endl;
+  //r = c1->myFS->writeFile(f3, buf4, 600);
+  //cout << "rv from writeFile /a f3 is " << r <<(r==-3 ? " Correct open is r": " failure") <<endl;
   r = c1->myFS->appendFile(f3, buf1, 5);
   cout << "rv from appendFile /a f3 is " << r <<(r==-3 ? " Correct open is r": " failure") <<endl;
 
