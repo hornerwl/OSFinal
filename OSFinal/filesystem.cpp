@@ -13,6 +13,7 @@
 #include <time.h> 
 using namespace std;
 map<int, bool> uniqueNums;
+map<int, bool> lockIDNums;
 
 FileSystem::FileSystem(DiskManager *dm, char fileSystemName){
 	myPM = new PartitionManager(dm, fileSystemName, dm->getPartitionSize(fileSystemName));	
@@ -88,6 +89,7 @@ int FileSystem::createFile(char *filename, int fnameLen){
 		globalMap[fName].inode = inodeLoc;
 		globalMap[fName].fileLoc = fileLoc;
 		globalMap[fName].size = 0;
+		globalMap[fName].lockId = 0;
 		return 0;
 	}
 	else {
@@ -102,10 +104,38 @@ int FileSystem::createDirectory(char *dirname, int dnameLen){
 
 }
 int FileSystem::lockFile(char *filename, int fnameLen){
+	char fname = filename[fnameLen-1];
 
+	if (globalMap.find(fname) == globalMap.end()){
+		return -2;
+	}
+	else if (globalMap[fname].lockId != 0)
+	{
+		return -1;
+	}
+	else
+	{
+		for (map<int,pp>::iterator it = personMap.begin(); it != personMap.end(); ++it )
+		{
+	    	if (it->second.name == fname)
+	        	return -3;
+	    }  
+		globalMap[fname].lockId = getLockID();
+		return globalMap[fname].lockId;
+    }
+	return -4;
 }
 int FileSystem::unlockFile(char *filename, int fnameLen, int lockId){
-
+    char name = filename[fnameLen-1];
+	if (globalMap.find(name) != globalMap.end() && globalMap[name].lockId != lockId)
+	{
+		return -1;
+	}
+	else if(globalMap[name].lockId == lockId){
+		globalMap[name].lockId = 0;
+		return 0;
+	}
+	return -2;
 }
 int FileSystem::deleteFile(char *filename, int fnameLen)
 {
@@ -167,7 +197,7 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 	else if(personMap[fileDesc].mode != 'w' && personMap[fileDesc].mode != 'm') {
 		return -3;
 	}
-	if ((personMap[fileDesc].rwptr + len) < 64)
+	if ((personMap[fileDesc].rwptr + len) <= 64)
 	{
 		for(int i = (personMap[fileDesc].rwptr); i < (personMap[fileDesc].rwptr + len); i++) {
 			buffer[i] = data[i];
@@ -210,6 +240,21 @@ int FileSystem::getUniqueID(){
 	uniqueNums[ID] = true;
 	//cout<< "Generated ID: " << ID << endl;
 	return ID;
+	
+}
+int FileSystem::getLockID(){
+	int id;
+  	srand (time(0));
+
+  	id = rand() % 100 + 1;
+		
+	while (lockIDNums[id] == true){
+  		id = rand() % 100 + 1;
+				
+	}
+	lockIDNums[id] = true;
+	//cout<< "Generated ID: " << ID << endl;
+	return id;
 	
 }
 bool FileSystem::searchForFile(char fileName){

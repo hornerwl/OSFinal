@@ -7,11 +7,13 @@ class FileSystem {
   int myfileSystemSize;
   
   /* declare other private members here */
+  
   struct gft{
     int inode;
     int fileLoc;
     int size;
     char *attr;
+    int lockId;
 
   };
   struct pp {
@@ -45,5 +47,6 @@ class FileSystem {
 
     /* declare other public members here */
     bool searchForFile(char fileName);
+    int getLockID();
 
 };
