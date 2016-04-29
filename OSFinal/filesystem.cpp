@@ -93,7 +93,7 @@ int FileSystem::createFile(char *filename, int fnameLen){
 		return 0;
 	}
 	else {
-		cout << "could not process file: invalid directory" << endl;
+		//cout << "could not process file: invalid directory" << endl;
 		return -3;
 	}
 
@@ -109,8 +109,7 @@ int FileSystem::lockFile(char *filename, int fnameLen){
 	if (globalMap.find(fname) == globalMap.end()){
 		return -2;
 	}
-	else if (globalMap[fname].lockId != 0)
-	{
+	else if (globalMap[fname].lockId != 0){
 		return -1;
 	}
 	else
@@ -183,6 +182,7 @@ int FileSystem::readFile(int fileDesc, char *data, int len){
 }
 int FileSystem::writeFile(int fileDesc, char *data, int len){
 	char buffer[64];
+	char databuffer[64];
 	myPM->readDiskBlock(personMap[fileDesc].loc, buffer);//get data already in the location
 
 	//check to make sure the map location actually exists
@@ -202,12 +202,37 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 		for(int i = (personMap[fileDesc].rwptr); i < (personMap[fileDesc].rwptr + len); i++) {
 			buffer[i] = data[i];
 		}
+		myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
 	}
 	else{
-		//TODO: Add code for allocating another block and writing to it
+
+		//finish writing out current block.
+		if((personMap[fileDesc].rwptr) < 64) {
+			for(int i = (personMap[fileDesc].rwptr); i < 64; i++) {
+				buffer[i] = data[i];
+			}
+			myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
+		}
+
+		//allocate additional block
+		int newFileDoc = myPM->getFreeDiskBlock();
+		myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
+		int offset = 10;
+		for(int i = 0; i < 3; i++){
+			if(buffer[offset] == '0') {
+
+			}
+			offset+=5;
+		}
+
+		//finish writing out data to new block
+		for(int i = 0; i < (len - (64 - personMap[fileDesc].rwptr)); i++) {
+			buffer[i] = data[i];
+		}
+		myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
+
 	}
 	//cout << personMap[fileDesc].loc << endl;
-	myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
 	personMap[fileDesc].rwptr += len;
 
 	return len;
