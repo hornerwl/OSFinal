@@ -138,14 +138,14 @@ int main()
   r = c1->myFS->appendFile(f1, buf1, 5);
   cout << "rv from appendFile /a f1 is " << r <<(r==5 ? " Correct wrote 5 s": " failure") <<endl;
 
-  //r = c1->myFS->writeFile(f2, buf4, 600);
-  //cout << "rv from writeFile /b f2 is " << r <<(r==600 ? " Correct wrote 600 M": " failure") <<endl;
+  r = c1->myFS->writeFile(f2, buf4, 600);
+  cout << "rv from writeFile /b f2 is " << r <<(r==600 ? " Correct wrote 600 M": " failure") <<endl;
   
   f3 = c1->myFS->openFile(const_cast<char *>("/a"), 2, 'r', -1);
   cout << "rv from openFile /a is " << f3 << (f3>0 ? " Correct file opened (r) f3 ": " failure") <<endl;
 
-  //r = c1->myFS->writeFile(f3, buf4, 600);
-  //cout << "rv from writeFile /a f3 is " << r <<(r==-3 ? " Correct open is r": " failure") <<endl;
+  r = c1->myFS->writeFile(f3, buf4, 600);
+  cout << "rv from writeFile /a f3 is " << r <<(r==-3 ? " Correct open is r": " failure") <<endl;
   r = c1->myFS->appendFile(f3, buf1, 5);
   cout << "rv from appendFile /a f3 is " << r <<(r==-3 ? " Correct open is r": " failure") <<endl;
 
@@ -204,14 +204,14 @@ int main()
 
   r = c1->myFS->seekFile(f2, -600, 0);
   cout << "rv from seekFile /b f2 is " << r << (r==0 ? " Correct rw set to 0, seek of -600": " failure") <<endl;
-  r = c1->myFS->writeFile(f2, buf4, 10);
+  /*r = c1->myFS->writeFile(f2, buf4, 10);
   cout << "rv from writeFile /b f2 is " << r <<(r==10 ? " Correct wrote 10 M": " failure") <<endl;
   r = c1->myFS->writeFile(f2, buf3, 10);
   cout << "rv from writeFile /b f2 is " << r <<(r==10 ? " Correct wrote 10 K": " failure") <<endl;
   r = c1->myFS->writeFile(f2, buf2, 10);
   cout << "rv from writeFile /b f2 is " << r <<(r==10 ? " Correct wrote 10 b": " failure") <<endl;
   r = c1->myFS->writeFile(f2, buf1, 10);
-  cout << "rv from writeFile /b f2 is " << r <<(r==10 ? " Correct wrote 10 s": " failure") <<endl;
+  cout << "rv from writeFile /b f2 is " << r <<(r==10 ? " Correct wrote 10 s": " failure") <<endl;*/
 
   r = c1->myFS->readFile(f2, rbuf1, 10);
   cout << "rv from readFile /b f2 is " << r << (r==10 ? " Correct file read of 10 Ms": " failure") <<endl;

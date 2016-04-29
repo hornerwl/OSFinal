@@ -61,15 +61,6 @@ int FileSystem::createFile(char *filename, int fnameLen){
 		sprintf(buffer+offset, "%i", 0);
 		offset+=4;
 
-		//read/write bits
-		sprintf(buffer+offset, "%i", 1);
-		offset+=1;
-		sprintf(buffer+offset, "%i", 1);
-		offset+=2;
-		
-		//size bit
-		sprintf(buffer+offset, "%i", 0);
-
 
 		myPM->writeDiskBlock(inodeLoc, buffer);	
 		myPM->readDiskBlock(1, dataBuffer);
@@ -90,6 +81,7 @@ int FileSystem::createFile(char *filename, int fnameLen){
 		globalMap[fName].fileLoc = fileLoc;
 		globalMap[fName].size = 0;
 		globalMap[fName].lockId = 0;
+		globalMap[fName].blockCount = 1;
 		return 0;
 	}
 	else {
@@ -153,6 +145,9 @@ int FileSystem::openFile(char *filename, int fnameLen, char mode, int lockId){
 	{
 		return -2;
 	}
+	else if((globalMap[fname].lockId != 0 && globalMap[fname].lockId != lockId) || (globalMap[fname].lockId == 0 && lockId > 0)){
+		return -3;
+	}
 	else{
 		int process = getUniqueID();
 		personMap[process].name = fname;
@@ -197,43 +192,121 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 	else if(personMap[fileDesc].mode != 'w' && personMap[fileDesc].mode != 'm') {
 		return -3;
 	}
-	if ((personMap[fileDesc].rwptr + len) <= 64)
+	if ((personMap[fileDesc].rwptr + len) < 64)
 	{
 		for(int i = (personMap[fileDesc].rwptr); i < (personMap[fileDesc].rwptr + len); i++) {
 			buffer[i] = data[i];
 		}
 		myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
+		personMap[fileDesc].rwptr += len;
+		//cout << personMap[fileDesc].rwptr << endl;
+
 	}
 	else{
+		int compareNum = 2;
+		int nextBlock;
+		//keep allocating blocks while our need is more than a block left
+		while (len - (64 * globalMap[personMap[fileDesc].name].blockCount) > 64)
+		{
+			if(globalMap[personMap[fileDesc].name].blockCount > compareNum)
+			{
+				if (compareNum == 16){
+					cout << "ERROR: NO MORE FILE SPACE!!!!!!!" << endl;
+					return -4;
+				}
+				//compareNum = 16;
+				myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
+				int inodeExist = buffer[18] - '0';
+				cout << "I node exist: "<< inodeExist << endl;
+				if (inodeExist != 0){
+					cout << "inode does exist" << endl;
+					myPM->readDiskBlock(nextBlock, buffer);
+					int newBlock = myPM->getFreeDiskBlock();;
+					int offset2 = 4;
+					for (int n = 0; n < 15; n++){
+						if (buffer[offset2] == '0')
+						{
+							personMap[fileDesc].loc = newBlock;
+							sprintf(buffer+offset2, "%i", newBlock);
+							myPM->writeDiskBlock(nextBlock, buffer);
+							n = 15;
+						}
+						offset2+=4;
+					}
+					for(int i = 0; i < 64; i++) {
+						buffer[i] = data[(64 * globalMap[personMap[fileDesc].name].blockCount) + i];
+					}
+					myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
 
-		//finish writing out current block.
-		if((personMap[fileDesc].rwptr) < 64) {
-			for(int i = (personMap[fileDesc].rwptr); i < 64; i++) {
-				buffer[i] = data[i];
+
+				}
+				else
+				{
+					cout << "inode does not exist" << endl;
+					nextBlock = myPM->getFreeDiskBlock();
+					int nextWriteBlock = myPM->getFreeDiskBlock();
+					sprintf(buffer+18, "%i", nextBlock);
+					myPM->writeDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
+					fill_n(buffer, 64, '.');
+					int offset = 4;
+					sprintf(buffer, "%i", nextWriteBlock);
+					for(int k = 0; k < 15; k++){
+						sprintf(buffer+offset, "%i", 0);
+						offset += 4;
+					}
+					myPM->writeDiskBlock(nextBlock, buffer);
+					personMap[fileDesc].loc = nextWriteBlock;
+
+					for(int i = 0; i < 64; i++) {
+						buffer[i] = data[(64 * globalMap[personMap[fileDesc].name].blockCount) + i];
+					}
+					myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
+
+				}
+				
+				
 			}
-			myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
-		}
+			else
+			{
+				//finish writing out current block.
+				if((personMap[fileDesc].rwptr) < 64) {
+					//cout<< "I am entering the else statement into the for: " << personMap[fileDesc].rwptr << endl;
+					for(int i = (personMap[fileDesc].rwptr); i < 64; i++) {
+						buffer[i] = data[(64 * globalMap[personMap[fileDesc].name].blockCount) + i];
+					}
+					myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
 
-		//allocate additional block
-		int newFileDoc = myPM->getFreeDiskBlock();
-		myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
-		int offset = 10;
-		for(int i = 0; i < 3; i++){
-			if(buffer[offset] == '0') {
-
+				}
+				personMap[fileDesc].rwptr = 0;
+				//allocate additional block
+				int newFileLoc = myPM->getFreeDiskBlock();
+				myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
+				int offset = 6;
+				for(int i = 0; i < 3; i++){
+					if(buffer[offset] == '0') {
+						personMap[fileDesc].loc = newFileLoc;
+						sprintf(buffer+offset, "%i", newFileLoc);
+						myPM->writeDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
+						i = 3;
+						//break;
+					}
+					offset+=4;
+				}
 			}
-			offset+=5;
+			globalMap[personMap[fileDesc].name].blockCount++;
 		}
 
-		//finish writing out data to new block
-		for(int i = 0; i < (len - (64 - personMap[fileDesc].rwptr)); i++) {
-			buffer[i] = data[i];
+		fill_n(buffer, 64, 'i');
+		//finish writing out data to the last block allocated
+		for(int i = 0; i < (64 - personMap[fileDesc].rwptr); i++) {
+			buffer[i] = data[(64 * globalMap[personMap[fileDesc].name].blockCount) + i];
+
 		}
+		personMap[fileDesc].rwptr = (64 - personMap[fileDesc].rwptr);
+		cout << "Read Write Pointer: "<<personMap[fileDesc].rwptr << endl;
 		myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
 
 	}
-	//cout << personMap[fileDesc].loc << endl;
-	personMap[fileDesc].rwptr += len;
 
 	return len;
 }
@@ -285,14 +358,11 @@ int FileSystem::getLockID(){
 bool FileSystem::searchForFile(char fileName){
 	char buffer[64];
 	myPM->readDiskBlock(1, buffer);
-	int offset = 5;
 
+	int offset = 5;
+    
 	for(int i = 0; i < 11; i++){
 		if(buffer[offset] == fileName){
-			globalMap[fileName].inode = buffer[offset+1] - '0';
-			myPM->readDiskBlock(globalMap[fileName].inode, buffer);
-			globalMap[fileName].fileLoc = buffer[6] - '0';
-			globalMap[fileName].size = buffer[25] - '0';
 			return true;
 		}
 		offset+=5;

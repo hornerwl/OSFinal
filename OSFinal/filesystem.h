@@ -14,6 +14,7 @@ class FileSystem {
     int size;
     char *attr;
     int lockId;
+    int blockCount;
 
   };
   struct pp {
