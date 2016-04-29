@@ -125,17 +125,27 @@ int FileSystem::openFile(char *filename, int fnameLen, char mode, int lockId){
 		return -2;
 	}
 	else{
-	int process = getUniqueID();
-	personMap[process].name = fname;
-	personMap[process].mode = mode;
-	personMap[process].loc = globalMap[fname].fileLoc;
-	cout << "Entry Created " << personMap[process].name << " " << personMap[process].mode << " " << personMap[process].loc << endl;
-	return process;
+		int process = getUniqueID();
+		personMap[process].name = fname;
+		personMap[process].mode = mode;
+		personMap[process].loc = globalMap[fname].fileLoc;
+		personMap[process].rwptr = 0;
+		//cout << "Entry Created " << personMap[process].name << " " << personMap[process].mode << " " << personMap[process].loc << endl;
+		return process;
 	}
 	return -4;
 
 }
 int FileSystem::closeFile(int fileDesc){
+	if (personMap.find(fileDesc) != personMap.end()){
+		personMap.erase(fileDesc);
+		return 0;
+	}
+	else{
+		return -1;
+
+	}
+	return -2;
 
 }
 int FileSystem::readFile(int fileDesc, char *data, int len){
@@ -143,23 +153,33 @@ int FileSystem::readFile(int fileDesc, char *data, int len){
 }
 int FileSystem::writeFile(int fileDesc, char *data, int len){
 	char buffer[64];
-	fill_n(buffer, 64,'.');
-	//cout << len << endl;
-	if(personMap[fileDesc].loc == 0){
+	myPM->readDiskBlock(personMap[fileDesc].loc, buffer);//get data already in the location
+
+	//check to make sure the map location actually exists
+	if(personMap.find(fileDesc) == personMap.end()){
 		return -1;
 	}
-	if (len < 0) {
+	//check to make sure out length is not negative
+	else if (len < 0) {
 		return -2;
 	}
-	if(personMap[fileDesc].mode == 'w' && personMap[fileDesc].mode == 'm') {
+	//check to make sure we have permission to write
+	else if(personMap[fileDesc].mode != 'w' && personMap[fileDesc].mode != 'm') {
 		return -3;
 	}
-
-	for(int i = 0; i < len; i++) {
-		buffer[i] = data[i];
+	if ((personMap[fileDesc].rwptr + len) < 64)
+	{
+		for(int i = (personMap[fileDesc].rwptr); i < (personMap[fileDesc].rwptr + len); i++) {
+			buffer[i] = data[i];
+		}
+	}
+	else{
+		//TODO: Add code for allocating another block and writing to it
 	}
 	//cout << personMap[fileDesc].loc << endl;
 	myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
+	personMap[fileDesc].rwptr += len;
+
 	return len;
 }
 int FileSystem::appendFile(int fileDesc, char *data, int len){
@@ -188,7 +208,7 @@ int FileSystem::getUniqueID(){
 				
 	}
 	uniqueNums[ID] = true;
-	cout<< "Generated ID: " << ID << endl;
+	//cout<< "Generated ID: " << ID << endl;
 	return ID;
 	
 }

@@ -133,8 +133,8 @@ int main()
   cout << "rv from writeFile /a f1 is " << r <<(r==5 ? " Correct wrote 5 b": " failure") <<endl;
   r = c1->myFS->writeFile(f1, buf3, 5);
   cout << "rv from writeFile /a f1 is " << r <<(r==5 ? " Correct wrote 5 K": " failure") <<endl;
-  //r = c1->myFS->writeFile(f1, buf4, 5);
-  //cout << "rv from writeFile /a f1 is " << r <<(r==5 ? " Correct wrote 5 M": " failure") <<endl;
+  r = c1->myFS->writeFile(f1, buf4, 5);
+  cout << "rv from writeFile /a f1 is " << r <<(r==5 ? " Correct wrote 5 M": " failure") <<endl;
   r = c1->myFS->appendFile(f1, buf1, 5);
   cout << "rv from appendFile /a f1 is " << r <<(r==5 ? " Correct wrote 5 s": " failure") <<endl;
 
