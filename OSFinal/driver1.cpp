@@ -204,14 +204,14 @@ int main()
 
   r = c1->myFS->seekFile(f2, -600, 0);
   cout << "rv from seekFile /b f2 is " << r << (r==0 ? " Correct rw set to 0, seek of -600": " failure") <<endl;
-  /*r = c1->myFS->writeFile(f2, buf4, 10);
+  r = c1->myFS->writeFile(f2, buf4, 10);
   cout << "rv from writeFile /b f2 is " << r <<(r==10 ? " Correct wrote 10 M": " failure") <<endl;
   r = c1->myFS->writeFile(f2, buf3, 10);
   cout << "rv from writeFile /b f2 is " << r <<(r==10 ? " Correct wrote 10 K": " failure") <<endl;
   r = c1->myFS->writeFile(f2, buf2, 10);
   cout << "rv from writeFile /b f2 is " << r <<(r==10 ? " Correct wrote 10 b": " failure") <<endl;
   r = c1->myFS->writeFile(f2, buf1, 10);
-  cout << "rv from writeFile /b f2 is " << r <<(r==10 ? " Correct wrote 10 s": " failure") <<endl;*/
+  cout << "rv from writeFile /b f2 is " << r <<(r==10 ? " Correct wrote 10 s": " failure") <<endl;
 
   r = c1->myFS->readFile(f2, rbuf1, 10);
   cout << "rv from readFile /b f2 is " << r << (r==10 ? " Correct file read of 10 Ms": " failure") <<endl;

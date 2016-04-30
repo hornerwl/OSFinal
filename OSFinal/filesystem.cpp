@@ -179,6 +179,7 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 	char buffer[64];
 	char databuffer[64];
 	bool inodeWriteFlag = false;
+	int lastFile;
 	myPM->readDiskBlock(personMap[fileDesc].loc, buffer);//get data already in the location
 
 	//check to make sure the map location actually exists
@@ -198,7 +199,7 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 		for(int i = (personMap[fileDesc].rwptr); i < (personMap[fileDesc].rwptr + len); i++) {
 			buffer[i] = data[i];
 		}
-		myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
+		lastFile = (personMap[fileDesc].rwptr + len) - 64;
 		personMap[fileDesc].rwptr += len;
 	}
 	else{
@@ -209,7 +210,7 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 		{
 			if(globalMap[personMap[fileDesc].name].blockCount > compareNum)
 			{
-				if (compareNum == 16){
+				if (globalMap[personMap[fileDesc].name].blockCount == 16){
 					cout << "ERROR: NO MORE FILE SPACE!!!!!!!" << endl;
 					return -4;
 				}
@@ -244,7 +245,7 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 					nextBlock = myPM->getFreeDiskBlock();
 					int nextWriteBlock = myPM->getFreeDiskBlock();
 					sprintf(buffer+18, "%i", nextBlock);
-					globalMap[personMap[fileDesc].name].x1ptr = nextBlock;
+					globalMap[personMap[fileDesc].name].inodeptr = nextBlock;
 					myPM->writeDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
 					fill_n(buffer, 64, '.');
 					int offset = 4;
@@ -295,7 +296,7 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 			globalMap[personMap[fileDesc].name].blockCount++;
 		}
 		if(inodeWriteFlag){
-			myPM->readDiskBlock(globalMap[personMap[fileDesc].name].x1ptr, buffer);
+			myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inodeptr, buffer);
 			int newBlock2 = myPM->getFreeDiskBlock();
 			int offset3 = 4;
 			for (int n = 0; n < 15; n++){
@@ -303,7 +304,7 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 				{
 					personMap[fileDesc].loc = newBlock2;
 					sprintf(buffer+offset3, "%i", newBlock2);
-					myPM->writeDiskBlock(globalMap[personMap[fileDesc].name].x1ptr, buffer);
+					myPM->writeDiskBlock(globalMap[personMap[fileDesc].name].inodeptr, buffer);
 					n = 15;
 				}
 				offset3+=4;
@@ -312,7 +313,7 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 			for(int i = 0; i < len - (64 * globalMap[personMap[fileDesc].name].blockCount); i++) {
 				buffer[i] = data[(64 * globalMap[personMap[fileDesc].name].blockCount) + i];
 			}
-			myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
+			lastFile = len - (64 * globalMap[personMap[fileDesc].name].blockCount);
 		}
 		else {
 			fill_n(buffer, 64, 'i');
@@ -323,15 +324,42 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 			}
 			personMap[fileDesc].rwptr = (64 - personMap[fileDesc].rwptr);
 			cout << "Read Write Pointer: "<<personMap[fileDesc].rwptr << endl;
-			myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
+			lastFile = (64 - personMap[fileDesc].rwptr);
 		}
 
 	}
+	globalMap[personMap[fileDesc].name].size = (64 * globalMap[personMap[fileDesc].name].blockCount) + lastFile;
 
+	myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
+	myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
+	sprintf(buffer+2, "%i", globalMap[personMap[fileDesc].name].size);
+ 	myPM->writeDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
 	return len;
 }
 int FileSystem::appendFile(int fileDesc, char *data, int len){
 
+	int savedLOC = personMap[fileDesc].loc;
+	int savedRWPTR = personMap[fileDesc].rwptr;
+	char buffer[64];
+	int getValue;
+	if(globalMap[personMap[fileDesc].name].blockCount <= 3){
+		//search direct inode
+		myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
+		getValue = 2 + (4 * globalMap[personMap[fileDesc].name].blockCount) ;
+	}
+	else
+	{
+		//search indirect indode
+		myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inodeptr, buffer);
+		getValue = 4 * ((globalMap[personMap[fileDesc].name].blockCount) -4);
+	}
+	personMap[fileDesc].loc = buffer[getValue] - '0';
+	cout<<"Location to append: " << personMap[fileDesc].loc << endl;
+	personMap[fileDesc].rwptr = globalMap[personMap[fileDesc].name].size % 64;
+	int returnValue = writeFile(fileDesc, data, len);
+	personMap[fileDesc].loc = savedLOC;
+	personMap[fileDesc].rwptr = savedRWPTR;
+	return returnValue;
 }
 int FileSystem::seekFile(int fileDesc, int offset, int flag){
 
