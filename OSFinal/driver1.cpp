@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
+#include <unistd.h>
 #include "disk.h"
 #include "diskmanager.h"
 #include "partitionmanager.h"
@@ -204,6 +205,7 @@ int main()
 
   r = c1->myFS->seekFile(f2, -600, 0);
   cout << "rv from seekFile /b f2 is " << r << (r==0 ? " Correct rw set to 0, seek of -600": " failure") <<endl;
+  sleep(2);
   r = c1->myFS->writeFile(f2, buf4, 10);
   cout << "rv from writeFile /b f2 is " << r <<(r==10 ? " Correct wrote 10 M": " failure") <<endl;
   r = c1->myFS->writeFile(f2, buf3, 10);

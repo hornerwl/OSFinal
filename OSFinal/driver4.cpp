@@ -145,7 +145,7 @@ int main()
   cout << "rv from closeFile /e/b/a f1 fs2 is " << r <<(r==0 ? " Correct": " fail") <<endl;
 
   r = c5->myFS->seekFile(f2, -100, 0);
-  cout << "rv from sekerFile /e/b/a /e/b/a fs2  is " << r << (r== -2 ? " correct -100 before begin": " fail") <<endl;
+  cout << "rv from seekFile /e/b/a /e/b/a fs2  is " << r << (r== -2 ? " correct -100 before begin": " fail") <<endl;
   r = c5->myFS->seekFile(f2, 0, -1);
   cout << "rv from seekFile /e/b/a f2 is " << r << (r==0 ? " Correct rw set to 0": " fail") <<endl;
 
