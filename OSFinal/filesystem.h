@@ -50,5 +50,8 @@ class FileSystem {
     /* declare other public members here */
     bool searchForFile(char fileName);
     int getLockID();
+    int convertString(char *data, int startLoc);
+    void setLoc(int currentBlock, int currentReadWrite, int fileDesc);
+    int convertLoc(int currentLoc, int fileDesc);
 
 };
