@@ -18,7 +18,23 @@ map<int, bool> lockIDNums;
 
 FileSystem::FileSystem(DiskManager *dm, char fileSystemName){
 	myPM = new PartitionManager(dm, fileSystemName, dm->getPartitionSize(fileSystemName));	
+	int off = 1;
+	char pmbuffer[64];
+	myPM->readDiskBlock(1, pmbuffer);
+    for(int i = 0; i < 10; i++){
+		if(pmbuffer[off] != '*'){
+			globalMap[pmbuffer[off]].inode = convertString(pmbuffer, off+2);
+			char buf2[64];
+			myPM->readDiskBlock(globalMap[pmbuffer[off]].inode, buf2);
+			globalMap[pmbuffer[off]].fileLoc = convertString(buf2, 6);
+			globalMap[pmbuffer[off]].size = 0;
+			globalMap[pmbuffer[off]].lockId = 0;
+			globalMap[pmbuffer[off]].blockCount = 1;
 
+		}
+
+		off+=6;
+	}
 }
 
 int FileSystem::createFile(char *filename, int fnameLen){	
@@ -618,6 +634,56 @@ void FileSystem::setLoc(int currentBlock, int currentReadWrite, int fileDesc){
 	personMap[fileDesc].rwptr = currentReadWrite;
 }
 int FileSystem::renameFile(char *filename1, int fnameLen1, char *filename2, int fnameLen2){
+	char buffer[64];
+	char name1 = filename1[fnameLen1 - 1];
+	char name2 = filename2[fnameLen2 - 1];
+	myPM->readDiskBlock(1, buffer);
+
+    if(globalMap.find(name1) == globalMap.end()){
+    	return -2;
+    }
+    else if(globalMap.find(name2) != globalMap.end()){
+    	return -3;
+    }
+    else if((!isalpha(name1)) || (!isalpha(name2)) || filename1[0] != '/' || filename2[0] != '/'){
+    	return -1;
+    }
+    else if(globalMap[name1].lockId != 0){
+    	return -4;
+    }
+    for (map<int,pp>::iterator it = personMap.begin(); it != personMap.end(); ++it )
+	{
+    	if (it->second.name == name1)
+        	return -4;
+    } 
+    int offset = 1;
+
+	for(int i = 0; i < 10; i++){
+		if(buffer[offset] == name1 && buffer[offset + 1] != 'd'){
+			buffer[offset] = name2;
+			myPM->writeDiskBlock(1, buffer);
+			myPM->readDiskBlock(globalMap[name1].inode, buffer);
+			buffer[0] = name2;
+			myPM->writeDiskBlock(globalMap[name1].inode, buffer);
+			
+			//rename here
+			globalMap[name2].inode = globalMap[name1].inode;
+			globalMap[name2].fileLoc = globalMap[name1].fileLoc;
+			globalMap[name2].size = globalMap[name1].size;
+			globalMap[name2].attr = globalMap[name1].attr;
+			globalMap[name2].lockId = globalMap[name1].lockId;
+			globalMap[name2].blockCount = globalMap[name1].blockCount;
+			globalMap[name2].inodeptr = globalMap[name1].inodeptr;
+			globalMap.erase(name1);
+
+
+
+			return 0;
+		}
+
+		offset+=6;
+	}
+	return -5;
 
 }
 int FileSystem::getAttribute(char *filename, int fnameLen /* ... and other parameters as needed */){
