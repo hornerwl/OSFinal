@@ -51,9 +51,7 @@ int FileSystem::createFile(char *filename, int fnameLen){
 	{
 		for (int i = 0; i < 11; i++)
 		{
-			if(searchForFile(fName))
-			{
-				//cout << "File has already been created" << endl;
+			if(searchForFile(filename, fnameLen)){
 				return -1;
 			}
 		}
@@ -70,8 +68,7 @@ int FileSystem::createFile(char *filename, int fnameLen){
 		offset+=4;
 		sprintf(buffer+offset, "%i", fileLoc);
 		offset+=4;
-		for(int i = 0; i < 2; i++)
-		{
+		for(int i = 0; i < 2; i++){
 			sprintf(buffer+offset, "%i", 0);
 			offset+=4;
 		}	
@@ -103,7 +100,6 @@ int FileSystem::createFile(char *filename, int fnameLen){
 		return 0;
 	}
 	else {
-		//cout << "could not process file: invalid directory" << endl;
 		return -3;
 	}
 
@@ -116,19 +112,23 @@ int FileSystem::createDirectory(char *dirname, int dnameLen){
 int FileSystem::lockFile(char *filename, int fnameLen){
 	char fname = filename[fnameLen-1];
 
+	//error checking!!!1!
+	//check to see if file exists
 	if (globalMap.find(fname) == globalMap.end()){
 		return -2;
 	}
+	//check for pre-existing lock
 	else if (globalMap[fname].lockId != 0){
 		return -1;
 	}
-	else
-	{
+	//check for file open status
+	else{
 		for (map<int,pp>::iterator it = personMap.begin(); it != personMap.end(); ++it )
 		{
 	    	if (it->second.name == fname)
 	        	return -3;
-	    }  
+	    }
+	    //if pass, lock file 
 		globalMap[fname].lockId = getLockID();
 		return globalMap[fname].lockId;
     }
@@ -136,57 +136,68 @@ int FileSystem::lockFile(char *filename, int fnameLen){
 }
 int FileSystem::unlockFile(char *filename, int fnameLen, int lockId){
     char name = filename[fnameLen-1];
-	if (globalMap.find(name) != globalMap.end() && globalMap[name].lockId != lockId)
-	{
+
+    //check for lock to unlock
+	if (globalMap.find(name) != globalMap.end() && globalMap[name].lockId != lockId){
 		return -1;
 	}
+	//if pass, remove lock
 	else if(globalMap[name].lockId == lockId){
 		globalMap[name].lockId = 0;
 		return 0;
 	}
+	//all other errors
 	return -2;
 }
-int FileSystem::deleteFile(char *filename, int fnameLen)
-{
-
+int FileSystem::deleteFile(char *filename, int fnameLen){
+	char fName = filename[fnameLen-1];
+	char buffer[64];	
 }
 int FileSystem::deleteDirectory(char *dirname, int dnameLen){
 
 }
 int FileSystem::openFile(char *filename, int fnameLen, char mode, int lockId){
-	//this is a comment
+	
+	//get file name
 	char fname = filename[fnameLen-1];
-	if (!searchForFile(fname) || filename[0] != '/'){
+
+	//error checking
+	//see if file exists
+	if (!searchForFile(filename, fnameLen)){
 		return -1;
 	}
-	else if(mode != 'r' && mode != 'w' && mode != 'm')
-	{
+	//check rw permissions
+	else if(mode != 'r' && mode != 'w' && mode != 'm'){
 		return -2;
 	}
+	//check for lock
 	else if((globalMap[fname].lockId != 0 && globalMap[fname].lockId != lockId) || (globalMap[fname].lockId == 0 && lockId > 0)){
 		return -3;
 	}
+	//if passed checks, make entry into per-process table
 	else{
 		int process = getUniqueID();
 		personMap[process].name = fname;
 		personMap[process].mode = mode;
 		personMap[process].loc = globalMap[fname].fileLoc;
 		personMap[process].rwptr = 0;
-		//cout << "Entry Created " << process << " " << personMap[process].name << " " << personMap[process].mode << " " << personMap[process].loc << endl;
 		return process;
 	}
 	return -4;
 
 }
 int FileSystem::closeFile(int fileDesc){
+
+	//delete entry from per-process table
 	if (personMap.find(fileDesc) != personMap.end()){
 		personMap.erase(fileDesc);
 		return 0;
 	}
 	else{
+		//if file DNE, throw error 
 		return -1;
-
 	}
+	//all other errors
 	return -2;
 
 }
@@ -196,6 +207,8 @@ int FileSystem::readFile(int fileDesc, char *data, int len){
 	int length = len;
 	int read = 0;
 	int blocksNavigated = 0;
+
+	//check for file DNE
 	if(personMap.find(fileDesc) == personMap.end()){
 		return -1;
 	}
@@ -208,27 +221,27 @@ int FileSystem::readFile(int fileDesc, char *data, int len){
 		return -3;
 	}
 	//cout << "Location of read: byte:" <<  personMap[fileDesc].rwptr << " in block " << personMap[fileDesc].loc << endl;
-	if ((personMap[fileDesc].rwptr + len) < 64)
-	{
+
+	//if len doesn't take us byond initial block, read that one block
+	if ((personMap[fileDesc].rwptr + len) < 64)	{
 		myPM->readDiskBlock(personMap[fileDesc].loc, buffer);
 		for (int i = personMap[fileDesc].rwptr; i < (personMap[fileDesc].rwptr + len); i++){
 			if (buffer[i] != 'c'){
 				data[i-personMap[fileDesc].rwptr] = buffer[i];
 				read++;
 			}
-			//data[i-personMap[fileDesc].rwptr] = buffer[i];
 		}
-
 		personMap[fileDesc].rwptr += read;
 	}
-	else
-	{
+	else{
 		//move to the next block and keep reading
 		char fileinode[64];
 		int myValue;
 		int dataBufferOffset = personMap[fileDesc].rwptr;
-		//cout << "inode pointer------------- : " << globalMap[personMap[fileDesc].name].inode << endl;
+
 		myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inode, fileinode);
+
+		//keep reading blocks until you reach the final block
 		while (length > 64){
 			myPM->readDiskBlock(personMap[fileDesc].loc, buffer);
 			for (int i = personMap[fileDesc].rwptr; i < (64); i++){
@@ -240,6 +253,7 @@ int FileSystem::readFile(int fileDesc, char *data, int len){
 			}
 			blocksNavigated++;
 			length -= 64;
+			
 			//find next block
 			int offset = 6;
 			for (int j = 0; j < 2; j++){
@@ -267,6 +281,7 @@ int FileSystem::readFile(int fileDesc, char *data, int len){
 			myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inodeptr, fileinode);
 			//cout << "Compare Value: " << myValue << " : " << personMap[fileDesc].loc << endl;
 			if (myValue == personMap[fileDesc].loc) {
+				
 				//move to inode
 				myValue = convertString(fileinode, 0);
 				if (myValue == 0)
@@ -306,6 +321,7 @@ int FileSystem::readFile(int fileDesc, char *data, int len){
 				}
 			}
 		}
+		//read final block
 		myPM->readDiskBlock(personMap[fileDesc].loc, buffer);
 		//cout <<  (len - 64 * blocksNavigated) << endl;
 		for (int i = personMap[fileDesc].rwptr; i < (len - 64 * blocksNavigated); i++){
@@ -320,7 +336,7 @@ int FileSystem::readFile(int fileDesc, char *data, int len){
 
 
 
-	return read;//len;//sizeof(data);
+	return read; //return the amount re acutally 
 }
 int FileSystem::convertString(char *data, int startLoc){
 	string var;
@@ -370,10 +386,8 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 			if(globalMap[personMap[fileDesc].name].blockCount > compareNum)
 			{
 				if (globalMap[personMap[fileDesc].name].blockCount == 16){
-					//cout << "ERROR: NO MORE FILE SPACE!!!!!!!" << endl;
 					return -4;
 				}
-				//compareNum = 16;
 				myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
 				int inodeExist =  convertString (buffer, 18);
 
@@ -539,12 +553,10 @@ int FileSystem::seekFile(int fileDesc, int offset, int flag){
 	{
 		myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inode, inode);
 		int currentLoc;
-		//---------------------------------------------------------------------------------------
 		bool foundMe = false;
 		int displace = 6;
 		for (int j = 0; j < 2; j++){
 			myValue = convertString(inode, displace);
-			//cout << "Compare Value: " << myValue << " : " << personMap[fileDesc].loc << endl;
 			if (myValue == personMap[fileDesc].loc)
 			{
 				foundMe = true;
@@ -554,7 +566,7 @@ int FileSystem::seekFile(int fileDesc, int offset, int flag){
 			displace += 4;
 			blockIam++;
 		}
-		//blockIam++;//account for 0th block of indirect inode
+		//account for 0th block of indirect inode
 		myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inodeptr, inode);
 		if (!foundMe)
 		{
@@ -562,7 +574,6 @@ int FileSystem::seekFile(int fileDesc, int offset, int flag){
 			displace = 0;
 			for (int k = 0; k < 14; k++){
 					myValue = convertString(inode, displace);
-					//cout << "Compare Value: " << myValue << " : " << personMap[fileDesc].loc << endl;
 					if (myValue == personMap[fileDesc].loc)
 					{
 						break;
@@ -571,20 +582,9 @@ int FileSystem::seekFile(int fileDesc, int offset, int flag){
 					blockIam++;
 				}
 		}
-		//cout << "My pointer is in block: " << blockIam << endl;
-		//---------------------------------------------------------------------------------------
-		/*if (globalMap[personMap[fileDesc].name].blockCount < 3){
-			currentLoc = (blockIam * 64) + personMap[fileDesc].rwptr;
-		}
-		else
-		{
-			currentLoc = ((globalMap[personMap[fileDesc].name].blockCount) * 64) + personMap[fileDesc].rwptr;
-		}*/
 		currentLoc = (blockIam * 64) + personMap[fileDesc].rwptr;
 		cout << "CurrentLoc in terms of size: " << currentLoc << endl;
-		//cout << "Offset: " << offset << endl;
 		currentLoc += offset;
-		//cout << "Changed Location: " << currentLoc << endl;
 		returnVal = convertLoc(currentLoc, fileDesc);
 		return returnVal;
 
@@ -604,13 +604,10 @@ int FileSystem::convertLoc(int currentLoc, int fileDesc){
 	int readwrite;
 	double block;
 	if (currentLoc < 0 || currentLoc > globalMap[personMap[fileDesc].name].size){
-		//cout << "Size: " << globalMap[personMap[fileDesc].name].size << endl;
 		return -2;
 	}
 	readwrite = currentLoc % 64;
 	block = floor(currentLoc/64);
-	//cout << "Block: " << int(block) << " rwptr: " << readwrite << endl;
-
 	setLoc(int(block), readwrite, fileDesc);
 	return 0;
 
@@ -722,18 +719,41 @@ int FileSystem::getLockID(){
 	return id;
 	
 }
-bool FileSystem::searchForFile(char fileName){
+bool FileSystem::searchForFile(char* fileName, int fnameLen){
 	char buffer[64];
+	int stepCount = (fnameLen/2);
+	int index = 0;
+	int index2 = 1;
+	int index3 = 1;
+	int nextBlockLoc = 0;
+
+	//read root directory
 	myPM->readDiskBlock(1, buffer);
+    for(int i = 0; i < stepCount; i++){
+    	if(fileName[index] != '/'){
+    		cout << "invalid file name error 1" << endl;
+    		return false;
+    	}
 
-	int offset = 1;
-    
-	for(int i = 0; i < 11; i++){
-		if(buffer[offset] == fileName){
-			return true;
+		for(int j = 0; j < 12; j++){
+			cout << index3 << endl;
+			if(buffer[index3] == fileName[index2]){
+				if(buffer[index3+1] == 'f'){
+					return true;
+				}
+				nextBlockLoc = convertString(buffer, index3+2);
+				cout << "Next block to read: " << nextBlockLoc << endl;
+				myPM->readDiskBlock(nextBlockLoc, buffer);
+				index3 = 1;
+			}
+			else {
+				cout << "invalid file name error 2" << endl;
+				return false;
+			}
+			index3+=6;
 		}
-		offset+=6;
-	}
-	return false;
 
+		index+=2;
+		index2+=2;
+	}
 }

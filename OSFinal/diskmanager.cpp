@@ -19,12 +19,7 @@ DiskManager::DiskManager(Disk *d, int partcount, DiskPartition *dp)
   int start = 1;
   int index = 0;
   if (r == 1)
-  {
-	  //cout << "We have new disk '''''''''''''''''''''''''''''''''''''''''''''''''''''''''" << endl;
-
-	  /* If needed, initialize the disk to keep partition information */
-	  
-          
+  {     
 	  for (int i = 0; i < partCount; i++)
 	  {
 		diskP[i].partitionName = dp[i].partitionName;
@@ -48,7 +43,6 @@ DiskManager::DiskManager(Disk *d, int partcount, DiskPartition *dp)
   /* else  read back the partition information from the DISK1 */
   else
   {
-    //cout << "We DO NOT have new disk '''''''''''''''''''''''''''''''''''''''''''''''''''''''''" << endl;
 	index = 0;
 	int actualValue = 0;
 

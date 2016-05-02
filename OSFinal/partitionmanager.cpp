@@ -12,21 +12,17 @@ PartitionManager::PartitionManager(DiskManager *dm, char partitionname, int part
 	myDM = dm;
 	myPartitionName = partitionname;
 	myPartitionSize = myDM->getPartitionSize(myPartitionName);
+	
 	/* If needed, initialize bit vector to keep track of free and allocted
 	blocks in this partition */
-	if (myPartitionSize > 0)
-	{
-	//cout<< "New Size New BitVector!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+	if (myPartitionSize > 0){
 	BV = new BitVector(myPartitionSize);
-	
-
 	}
 
 	int checkBv = myDM->readDiskBlock(myPartitionName, 0, buffer);
 
 	if(checkBv == 0){
 		if(buffer[0] == 'c'){
-			//cout<< "New BitVector!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
 			BV->setBit(0);
 			BV->setBit(1);
 			BV->getBitVector((unsigned int*) buffer);
@@ -69,7 +65,6 @@ int PartitionManager::getFreeDiskBlock()
 
 	for (int i = 0; i < myPartitionSize; i++)
 	{
-		//cout<<BV->testBit(i)<<endl;
 		if(BV->testBit(i) == 0)
 		{
 			BV->setBit(i);

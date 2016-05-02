@@ -48,7 +48,7 @@ class FileSystem {
     int setAttribute(char *filename, int fnameLen /* ... and other parameters as needed */);
 
     /* declare other public members here */
-    bool searchForFile(char fileName);
+    bool searchForFile(char* fileName, int fnameLen);
     int getLockID();
     int convertString(char *data, int startLoc);
     void setLoc(int currentBlock, int currentReadWrite, int fileDesc);
