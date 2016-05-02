@@ -67,14 +67,15 @@ int FileSystem::createFile(char *filename, int fnameLen){
 		myPM->readDiskBlock(1, dataBuffer);
 
 		//create entry in root directory
-		offset = 5;
-		for(int i = 0; i < 11; i++){
+		offset = 2;
+		for(int i = 0; i < 10; i++){
 			if(dataBuffer[offset] == 'e'){
-				dataBuffer[offset] = fName;
+				dataBuffer[offset-1] = fName;
+				dataBuffer[offset] = 'f';
 				sprintf(dataBuffer+offset+1, "%i", inodeLoc);
 				break;
 			}
-			offset+=5;
+			offset+=6;
 		}
 		myPM->writeDiskBlock(1, dataBuffer);
 		
@@ -472,12 +473,16 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 		}
 
 	}
-	globalMap[personMap[fileDesc].name].size = (64 * globalMap[personMap[fileDesc].name].blockCount) + lastFile;
-
 	myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
-	myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
-	sprintf(buffer+2, "%i", globalMap[personMap[fileDesc].name].size);
- 	myPM->writeDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
+
+	if (globalMap[personMap[fileDesc].name].size < ((64 * globalMap[personMap[fileDesc].name].blockCount) + lastFile))
+	{
+			globalMap[personMap[fileDesc].name].size = (64 * globalMap[personMap[fileDesc].name].blockCount) + lastFile;
+
+			myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
+			sprintf(buffer+2, "%i", globalMap[personMap[fileDesc].name].size);
+ 			myPM->writeDiskBlock(globalMap[personMap[fileDesc].name].inode, buffer);
+	}
 	return len;
 }
 int FileSystem::appendFile(int fileDesc, char *data, int len){
@@ -560,7 +565,7 @@ int FileSystem::seekFile(int fileDesc, int offset, int flag){
 			currentLoc = ((globalMap[personMap[fileDesc].name].blockCount) * 64) + personMap[fileDesc].rwptr;
 		}*/
 		currentLoc = (blockIam * 64) + personMap[fileDesc].rwptr;
-		//cout << "CurrentLoc in terms of size: " << currentLoc << endl;
+		cout << "CurrentLoc in terms of size: " << currentLoc << endl;
 		//cout << "Offset: " << offset << endl;
 		currentLoc += offset;
 		//cout << "Changed Location: " << currentLoc << endl;
@@ -655,13 +660,13 @@ bool FileSystem::searchForFile(char fileName){
 	char buffer[64];
 	myPM->readDiskBlock(1, buffer);
 
-	int offset = 5;
+	int offset = 1;
     
 	for(int i = 0; i < 11; i++){
 		if(buffer[offset] == fileName){
 			return true;
 		}
-		offset+=5;
+		offset+=6;
 	}
 	return false;
 

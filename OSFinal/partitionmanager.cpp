@@ -34,14 +34,16 @@ PartitionManager::PartitionManager(DiskManager *dm, char partitionname, int part
 			fill_n(buffer, 64 , '.');
 			buffer[0] = '/';
 			int offset = 1;
-			for (int i = 2; i<12; i++ )
+			for (int i = 0; i<10; i++ )
 			{
-				sprintf(buffer+(offset), "%i", 0);
-				offset+= 4;
+				buffer[offset] = '*';
+				offset++;
 				buffer[offset] = 'e';
 				offset++;
+				sprintf(buffer+(offset), "%i", 0);
+				offset+= 4;
 			}
-			sprintf(buffer+(offset), "%i ", 0);
+			sprintf(buffer+(offset), "%i", 0);
 			myDM->writeDiskBlock(myPartitionName, 1, buffer);
 		}
 		else {
