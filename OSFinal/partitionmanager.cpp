@@ -65,17 +65,20 @@ PartitionManager::~PartitionManager()
  */
 int PartitionManager::getFreeDiskBlock()
 {
-  /* write the code for allocating a partition block */
-  for (int i = 0; i < myPartitionSize; i++)
-  {
-  	//cout<<BV->testBit(i)<<endl;
-    if(BV->testBit(i) == 0)
-    {
-      BV->setBit(i);
-      return i;
-    }
-  }
-  return -1;
+	char buffer[64];
+
+	for (int i = 0; i < myPartitionSize; i++)
+	{
+		//cout<<BV->testBit(i)<<endl;
+		if(BV->testBit(i) == 0)
+		{
+			BV->setBit(i);
+			BV->getBitVector((unsigned int*) buffer);
+			myDM->writeDiskBlock(myPartitionName, 0, buffer);
+			return i;
+		}
+	}
+	return -1;
 }
 
 /*
