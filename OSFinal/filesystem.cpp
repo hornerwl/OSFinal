@@ -29,7 +29,7 @@ FileSystem::FileSystem(DiskManager *dm, char fileSystemName){
 			globalMap[pmbuffer[off]].fileLoc = convertString(buf2, 6);
 			globalMap[pmbuffer[off]].size = 0;
 			globalMap[pmbuffer[off]].lockId = 0;
-			globalMap[pmbuffer[off]].blockCount = 1;
+			globalMap[pmbuffer[off]].blockCount = 0;
 
 		}
 
@@ -60,6 +60,7 @@ int FileSystem::createFile(char *filename, int fnameLen){
 		offset = 0;
 		int inodeLoc = myPM->getFreeDiskBlock();
 		int fileLoc = myPM->getFreeDiskBlock();	
+		cout << "File inode created at " << inodeLoc << " File location " << fileLoc << endl;
 		fill_n(dataBuffer, 64,'.');
 		fill_n(buffer, 64,'.');
 		buffer[offset] = fName;
@@ -148,7 +149,68 @@ int FileSystem::unlockFile(char *filename, int fnameLen, int lockId){
 }
 int FileSystem::deleteFile(char *filename, int fnameLen)
 {
+	char buffer[64];
+	myPM->readDiskBlock(1, buffer);
+	char name = filename[fnameLen-1];
+    if(!isalpha(name) || filename[0] != '/' || (fnameLen%2 != 0)){
+    	return -3;
+    }
+    else if(globalMap.find(name) == globalMap.end()){
+    	return -1;
+    }
+    else if(globalMap[name].lockId != 0){
+    	return -2;
+    }
+    for (map<int,pp>::iterator it = personMap.begin(); it != personMap.end(); ++it )
+	{
+    	if (it->second.name == name)
+        	return -2;
+    }
+    int offset = 1;
+    bool inodeInfo = true;
+    int value;
+    for(int i = 0; i < 10; i++){
+		if(buffer[offset] == name && buffer[offset + 1] != 'd'){
+			int fileInodeLocation = convertString(buffer, offset + 2);
+			char sirbufnstuff[64];
+			myPM->readDiskBlock(fileInodeLocation, sirbufnstuff);
+			for (int j = 0; j < 3; j++){
+				value = convertString(sirbufnstuff, 6 + (j * 4));
+				if(value == 0)
+				{
+					inodeInfo = false;
+					break;
+				}
+				myPM->returnDiskBlock(value);
+			}
+			int indirect = convertString(sirbufnstuff, 18);
+			myPM->readDiskBlock(indirect, sirbufnstuff);
+			if(inodeInfo){
+				for (int k = 0; k < 16; k++){
+					value = convertString(sirbufnstuff, (k * 4));
+					//cout << "Compare Value: " << myValue << " : " << personMap[fileDesc].loc << endl;
+					if (value == 0)
+					{
+						break;
+					}
+					myPM->returnDiskBlock(value);
+				}
+				myPM->returnDiskBlock(indirect);
+			}
+			globalMap.erase(name);
+			myPM->returnDiskBlock(fileInodeLocation);
+			buffer[offset] = '*';
+			buffer[offset + 1] = 'e';
+			sprintf(buffer + (offset + 2), "%i", 0);
+			myPM->writeDiskBlock(1, buffer);
+			return 0;
+		}
 
+		offset+=6;
+	}
+
+
+	return -3;
 }
 int FileSystem::deleteDirectory(char *dirname, int dnameLen){
 
@@ -179,7 +241,7 @@ int FileSystem::openFile(char *filename, int fnameLen, char mode, int lockId){
 
 }
 int FileSystem::closeFile(int fileDesc){
-	if (personMap.find(fileDesc) != personMap.end()){
+	if (personMap.find(fileDesc) != personMap.end() && fileDesc > 0){
 		personMap.erase(fileDesc);
 		return 0;
 	}
@@ -192,7 +254,8 @@ int FileSystem::closeFile(int fileDesc){
 }
 int FileSystem::readFile(int fileDesc, char *data, int len){
 	char buffer[64];
-	fill_n(buffer, 64, 'c');
+	fill_n(data, len, 'c');
+
 	int length = len;
 	int read = 0;
 	int blocksNavigated = 0;
@@ -207,37 +270,48 @@ int FileSystem::readFile(int fileDesc, char *data, int len){
 	else if(personMap[fileDesc].mode != 'r' && personMap[fileDesc].mode != 'm') {
 		return -3;
 	}
-	//cout << "Location of read: byte:" <<  personMap[fileDesc].rwptr << " in block " << personMap[fileDesc].loc << endl;
+	cout << "Location of read: byte:" <<  personMap[fileDesc].rwptr << " in block " << personMap[fileDesc].loc << endl;
 	if ((personMap[fileDesc].rwptr + len) < 64)
 	{
+		fill_n(buffer, 64, 'c');
 		myPM->readDiskBlock(personMap[fileDesc].loc, buffer);
 		for (int i = personMap[fileDesc].rwptr; i < (personMap[fileDesc].rwptr + len); i++){
 			if (buffer[i] != 'c'){
 				data[i-personMap[fileDesc].rwptr] = buffer[i];
 				read++;
 			}
+			else
+				i = (personMap[fileDesc].rwptr + len);
 			//data[i-personMap[fileDesc].rwptr] = buffer[i];
 		}
 
 		personMap[fileDesc].rwptr += read;
+		cout << "READ: " << read << endl;
+
 	}
 	else
 	{
+		//fill_n(buffer, 64, 'c');
 		//move to the next block and keep reading
 		char fileinode[64];
 		int myValue;
 		int dataBufferOffset = personMap[fileDesc].rwptr;
 		//cout << "inode pointer------------- : " << globalMap[personMap[fileDesc].name].inode << endl;
 		myPM->readDiskBlock(globalMap[personMap[fileDesc].name].inode, fileinode);
+		bool eof = false;
 		while (length > 64){
+			fill_n(buffer, 64, 'c');
 			myPM->readDiskBlock(personMap[fileDesc].loc, buffer);
 			for (int i = personMap[fileDesc].rwptr; i < (64); i++){
 				if (buffer[i] != 'c'){
 				data[i + (64 * blocksNavigated) - dataBufferOffset] = buffer[i];
 				read++;
 				}
+				else
+					i = 64;
 				
 			}
+			personMap[fileDesc].rwptr += read;
 			blocksNavigated++;
 			length -= 64;
 			//find next block
@@ -251,7 +325,8 @@ int FileSystem::readFile(int fileDesc, char *data, int len){
 					myValue = convertString(fileinode, offset);
 					if (myValue == 0)
 					{
-						//cout << "End of file change nothing" << endl;
+						cout << "End of file change nothing" << endl;
+						eof = true;
 					}
 					else{
 						personMap[fileDesc].loc = myValue; 
@@ -272,6 +347,7 @@ int FileSystem::readFile(int fileDesc, char *data, int len){
 				if (myValue == 0)
 					{
 						cout << "End of file change nothing" << endl;
+						eof = true;
 					}
 				else{
 					personMap[fileDesc].loc = myValue; 
@@ -306,18 +382,22 @@ int FileSystem::readFile(int fileDesc, char *data, int len){
 				}
 			}
 		}
+		fill_n(buffer, 64, 'c');
 		myPM->readDiskBlock(personMap[fileDesc].loc, buffer);
 		//cout <<  (len - 64 * blocksNavigated) << endl;
-		for (int i = personMap[fileDesc].rwptr; i < (len - 64 * blocksNavigated); i++){
-			if (buffer[i] != 'c'){
-				data[((64 * blocksNavigated) + i) - dataBufferOffset] = buffer[i];
-				read++;
+		if(!eof){
+			for (int i = personMap[fileDesc].rwptr; i < (len - 64 * blocksNavigated); i++){
+				if (buffer[i] != 'c'){
+					data[((64 * blocksNavigated) + i) - dataBufferOffset] = buffer[i];
+					read++;
+				}
+				else
+					i =  (len - 64 * blocksNavigated);
+				//data[i-personMap[fileDesc].rwptr] = buffer[i];
 			}
-			//data[i-personMap[fileDesc].rwptr] = buffer[i];
 		}
 
 	}
-
 
 
 	return read;//len;//sizeof(data);
@@ -337,12 +417,12 @@ int FileSystem::convertString(char *data, int startLoc){
 int FileSystem::writeFile(int fileDesc, char *data, int len){
 	char buffer[64];
 	char databuffer[64];
-	bool inodeWriteFlag = false;
+	bool inodeWriteFlag = false, doubleWrite = false;
 	int lastFile;
 	myPM->readDiskBlock(personMap[fileDesc].loc, buffer);//get data already in the location
 
 	//check to make sure the map location actually exists
-	if(personMap.find(fileDesc) == personMap.end()){
+	if(personMap.find(fileDesc) == personMap.end() || fileDesc < 0){
 		return -1;
 	}
 	//check to make sure out length is not negative
@@ -353,20 +433,25 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 	else if(personMap[fileDesc].mode != 'w' && personMap[fileDesc].mode != 'm') {
 		return -3;
 	}
+	cout << "The compare value: " << (personMap[fileDesc].rwptr + len) << endl;
 	if ((personMap[fileDesc].rwptr + len) < 64)
-	{
+	{ 
 		for(int i = (personMap[fileDesc].rwptr); i < (personMap[fileDesc].rwptr + len); i++) {
 			buffer[i] = data[i];
 		}
 		lastFile = (personMap[fileDesc].rwptr + len) - 64;
 		personMap[fileDesc].rwptr += len;
 	}
-	else{
+	else
+	{
+		globalMap[personMap[fileDesc].name].blockCount--;
 		int compareNum = 2;
 		int nextBlock;
+		
 		//keep allocating blocks while our need is more than a block left
-		while (len - (64 * globalMap[personMap[fileDesc].name].blockCount) > 64)
+		while (len - (64 * (globalMap[personMap[fileDesc].name].blockCount)) > 64)
 		{
+			cout << "Block Count: " << globalMap[personMap[fileDesc].name].blockCount << endl;
 			if(globalMap[personMap[fileDesc].name].blockCount > compareNum)
 			{
 				if (globalMap[personMap[fileDesc].name].blockCount == 16){
@@ -380,7 +465,7 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 				if (inodeExist != 0){
 
 					myPM->readDiskBlock(nextBlock, buffer);
-					int newBlock = myPM->getFreeDiskBlock();;
+					int newBlock = myPM->getFreeDiskBlock();
 					int offset2 = 4;
 					for (int n = 0; n < 15; n++){
 						if (buffer[offset2] == '0')
@@ -427,14 +512,19 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 			}
 			else
 			{
+				
+
+				cout << "I am writing here" << globalMap[personMap[fileDesc].name].blockCount << endl;
+				doubleWrite = true;
+				fill_n(buffer, 64, 'c');
 				//finish writing out current block.
+				cout << "Starting readwrite pointer: " << personMap[fileDesc].rwptr << endl;
 				if((personMap[fileDesc].rwptr) < 64) {
 					//cout<< "I am entering the else statement into the for: " << personMap[fileDesc].rwptr << endl;
 					for(int i = (personMap[fileDesc].rwptr); i < 64; i++) {
-						buffer[i] = data[(64 * globalMap[personMap[fileDesc].name].blockCount) + i];
+						buffer[i] = data[(64 * globalMap[personMap[fileDesc].name].blockCount) + i];//-------------------------------------------------------------------
 					}
 					myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
-
 				}
 				personMap[fileDesc].rwptr = 0;
 				//allocate additional block
@@ -451,6 +541,7 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 					}
 					offset+=4;
 				}
+
 			}
 			globalMap[personMap[fileDesc].name].blockCount++;
 		}
@@ -477,20 +568,28 @@ int FileSystem::writeFile(int fileDesc, char *data, int len){
 			//cout << "Read Write Pointer: "<<personMap[fileDesc].rwptr << endl;
 		}
 		else {
+			personMap[fileDesc].rwptr = len - (64 * globalMap[personMap[fileDesc].name].blockCount);			
+			cout << "And I am writing here: " << personMap[fileDesc].rwptr << endl;
 			fill_n(buffer, 64, 'c');
-			//finish writing out data to the last block allocated
-			for(int i = 0; i < (64 - personMap[fileDesc].rwptr); i++) {
+			//finish writing out data to the last block allocated 
+			for(int i = 0; i < (personMap[fileDesc].rwptr); i++) {
 				buffer[i] = data[(64 * globalMap[personMap[fileDesc].name].blockCount) + i];
 
 			}
-			personMap[fileDesc].rwptr = (64 - personMap[fileDesc].rwptr);
+			//cout << "Size of buffer " << sizeof(buffer) << endl;
+			//personMap[fileDesc].rwptr = (64 - personMap[fileDesc].rwptr);
 			//cout << "Read Write Pointer: "<<personMap[fileDesc].rwptr << endl;
-			lastFile = (64 - personMap[fileDesc].rwptr);
+			lastFile = (personMap[fileDesc].rwptr);
 		}
+		//globalMap[personMap[fileDesc].name].blockCount++;
+
+		//lastFile = len - (64 * globalMap[personMap[fileDesc].name].blockCount);
+
+
 
 	}
 	myPM->writeDiskBlock(personMap[fileDesc].loc, buffer);
-
+	fill_n(buffer, 64, 'c');
 	if (globalMap[personMap[fileDesc].name].size < ((64 * globalMap[personMap[fileDesc].name].blockCount) + lastFile))
 	{
 			globalMap[personMap[fileDesc].name].size = (64 * globalMap[personMap[fileDesc].name].blockCount) + lastFile;

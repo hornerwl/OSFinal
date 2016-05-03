@@ -90,7 +90,7 @@ int main()
   cout << "rv from deleteFile /c is " << r <<(r==-2 ? " correct":" fail")<<endl;
   r = c1->myFS->unlockFile( const_cast<char *>("/c"),2,l2);
   cout << "rv from unlockFile /c is " << r << (r==0 ? " correct ": " fail") <<endl;
-  /*
+  
   cout <<"\ncreate files on 3 partitions\n";
   r = c1->myFS->createFile(const_cast<char *>("/a"), 2);
   cout << "rv from createFile /a fs1 is " << r <<(r==0 ? " correct ": " fail") <<endl;
@@ -105,7 +105,7 @@ int main()
   r = c3->myFS->createFile(const_cast<char *>("/b"), 2);
   cout << "rv from createFile /b fs3 is " << r <<(r==0 ? " correct ": " fail") <<endl;
 
-
+  
   cout <<"\nread/write and files on 3 partitions\n";
   f1 = c1->myFS->openFile(const_cast<char *>("/a"), 2, 'w', -1);
   cout << "rv from openFile /a w fs1 is " << f1 << (f1>0 ? " correct ": " fail") <<endl;
@@ -268,7 +268,7 @@ int main()
 
   r = c2->myFS->closeFile(f2);
   cout << "rv from closeFile /l is " << r << (r==0 ? " correct":" fail")<<endl;
-
+  /*
   r = c2->myFS->deleteFile(const_cast<char *>("/a"), 2);
   cout << "rv from deleteFile /a is " << r <<(r==0 ? " correct":" fail")<<endl;
   r = c2->myFS->deleteFile(const_cast<char *>("/b"), 2);
@@ -353,6 +353,6 @@ int main()
   cout << "rv from closeFile /z is " << r << (r==0 ? " correct":" fail")<<endl;
   
   cout <<"End of driver 2\n";
-  return 0;
   */
+  return 0;
 }

@@ -9,6 +9,7 @@ using namespace std;
 PartitionManager::PartitionManager(DiskManager *dm, char partitionname, int partitionsize)
 {
 	char buffer[64];
+	fill_n(buffer, 64 , '0');
 	myDM = dm;
 	myPartitionName = partitionname;
 	myPartitionSize = myDM->getPartitionSize(myPartitionName);
@@ -65,6 +66,8 @@ PartitionManager::~PartitionManager()
  */
 int PartitionManager::getFreeDiskBlock()
 {
+	char buf[64];
+	fill_n (buf, 64, '0');
   /* write the code for allocating a partition block */
   for (int i = 0; i < myPartitionSize; i++)
   {
@@ -72,6 +75,8 @@ int PartitionManager::getFreeDiskBlock()
     if(BV->testBit(i) == 0)
     {
       BV->setBit(i);
+      BV->getBitVector((unsigned int*) buf);
+      myDM->writeDiskBlock(myPartitionName, 0, buf);
       return i;
     }
   }
@@ -88,6 +93,10 @@ int PartitionManager::returnDiskBlock(int blknum)
   char buffer[getBlockSize()];
   fill_n(buffer, getBlockSize(), 'c');
   myDM->writeDiskBlock(myPartitionName, blknum, buffer);
+  char buf[64];
+  fill_n (buf, 64, '0');
+  BV->getBitVector((unsigned int*) buf);
+  myDM->writeDiskBlock(myPartitionName, 0, buf);
   return 0;
 }
 
