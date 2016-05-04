@@ -268,7 +268,8 @@ int main()
 
   r = c2->myFS->closeFile(f2);
   cout << "rv from closeFile /l is " << r << (r==0 ? " correct":" fail")<<endl;
-  /*
+  //-------------------------------------------WORKS TO HERE------------------------------------------------------------------
+  
   r = c2->myFS->deleteFile(const_cast<char *>("/a"), 2);
   cout << "rv from deleteFile /a is " << r <<(r==0 ? " correct":" fail")<<endl;
   r = c2->myFS->deleteFile(const_cast<char *>("/b"), 2);
@@ -302,7 +303,7 @@ int main()
   r = c2->myFS->deleteFile(const_cast<char *>("/j"), 2);
   cout << "rv from deleteFile /j is " << r <<(r==0 ? " correct":" fail")<<endl;
   r = c2->myFS->deleteFile(const_cast<char *>("/k"), 2);
-  cout << "rv from deleteFile /k is " << r <<(r==0 ? " correct":" fail")<<endl;
+  cout << "rv from deleteFile /k is " << r <<(r==0 ? " correct":" fail")<<endl;//--------------------------------------------------------
 
   f2 = c2->myFS->openFile(const_cast<char *>("/l"), 2, 'm', -1);
   cout << "rv from openFile /l r is " << f2 << (f2>0 ? " correct ": " fail") <<endl;
@@ -310,15 +311,16 @@ int main()
   cout << "rv from closeFile /l is " << r << (r==0 ? " correct":" fail")<<endl;
 
   r = c2->myFS->deleteFile(const_cast<char *>("/l"), 2);
-  cout << "rv from deleteFile /l is " << r <<(r==0 ? " correct":" fail")<<endl;
+  cout << "rv from deleteFile /l is " << r <<(r==0 ? " correct":" fail")<<endl;//---------------------------------------------------------
 
   cout <<"\nfile edge test and rw accuraty on fs2\n";  //fill up a file almost
   r = c2->myFS->createFile(const_cast<char *>("/z"), 2);
   cout << "rv from createFile /z is " << r <<(r==0 ? " correct ": " fail") <<endl;
   f2 = c2->myFS->openFile(const_cast<char *>("/z"), 2, 'm', -1);
   cout << "rv from openFile /z r is " << f2 << (f2>0 ? " correct ": " fail") <<endl;
-  r = c2->myFS->writeFile(f2, buf4, 600);
+  r = c2->myFS->writeFile(f2, buf4, 600 );
   cout << "rv from writeFile /z is " << r << (r==600 ? " correct ": " fail") <<endl;
+
   r = c2->myFS->writeFile(f2, buf4, 600);
   cout << "rv from writeFile /z is " << r << (r==600 ? " correct ": " fail") <<endl;
 
@@ -337,7 +339,7 @@ int main()
   cout << "rv from appendFile is " << r << (r==16 ? " correct ": " fail") <<endl;
 
   r = c2->myFS->appendFile(f2, buf1, 4);
-  cout << "rv from appendFile is " << r << (r==-3 ? " correct exceeds max file size": " fail") <<endl;
+  cout << "rv from appendFile is " << r << (r==-3 ? " correct exceeds max file size": " fail") <<endl;//--------------------------------------------
   
   r = c2->myFS->seekFile(f2, 0, -1);
   cout << "rv from seekFile is " << r << endl;
@@ -353,6 +355,6 @@ int main()
   cout << "rv from closeFile /z is " << r << (r==0 ? " correct":" fail")<<endl;
   
   cout <<"End of driver 2\n";
-  */
+  
   return 0;
 }
